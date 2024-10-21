@@ -155,10 +155,6 @@ def dataio_prep(hparams):
     sb.dataio.dataset.add_dynamic_item(dataset_splits_values, labels_pipeline)
 
     train_split = dataset_splits["train"]
-
-    if hparams["train_data_count"] is not None:
-        data_count = hparams["train_data_count"]
-        train_split.data_ids = train_split.data_ids[:data_count]
     dataset_splits["train"] = train_split
 
     return dataset_splits

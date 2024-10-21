@@ -189,7 +189,7 @@ if __name__ == "__main__":
         prepare_audiomnist,
         kwargs={
             "data_folder": hparams["data_folder"],
-            "save_folder": hparams["save_folder"],
+            "save_folder": hparams["data_save_folder"],
             "train_json": hparams["train_json"],
             "valid_json": hparams["valid_json"],
             "test_json": hparams["test_json"],

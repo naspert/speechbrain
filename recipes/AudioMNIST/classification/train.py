@@ -90,9 +90,6 @@ class AudioBrain(sb.core.Brain):
 
         # Perform end-of-iteration things, like annealing, logging, etc.
         if stage == sb.Stage.VALID:
-            old_lr, new_lr = self.hparams.lr_annealing(epoch)
-            sb.nnet.schedulers.update_learning_rate(self.optimizer, new_lr)
-
             self.hparams.train_logger.log_stats(
                 stats_meta={"epoch": epoch, "lr": old_lr},
                 train_stats=self.train_stats,
@@ -111,70 +108,69 @@ class AudioBrain(sb.core.Brain):
             )
 
 
-def dataio_prep(hparams):
-    "Creates the datasets and their data processing pipelines."
+DATASET_SPLITS = ["train", "valid", "test"]
 
-    data_folder = hparams["data_folder"]
 
-    # 1. Declarations:
-    train_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
-        csv_path=hparams["train_annotation"],
-        replacements={"data_root": data_folder},
-    )
+def apply_sort(hparams, dataset):
+    if hparams["sort"]:
+        dataset = dataset.filtered_sorted(sort_key=hparams["sort"])
+    if hparams["batch_shuffle"]:
+        dataset = dataset.batch_shuffle(hparams["batch_size"])
+    return dataset
 
-    valid_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
-        csv_path=hparams["valid_annotation"],
-        replacements={"data_root": data_folder},
-    )
 
-    test_data = sb.dataio.dataset.DynamicItemDataset.from_csv(
-        csv_path=hparams["test_annotation"],
-        replacements={"data_root": data_folder},
-    )
-
-    datasets = [train_data, valid_data, test_data]
-    label_encoder = sb.dataio.encoder.CategoricalEncoder()
-
-    # 2. Define audio pipeline:
-    @sb.utils.data_pipeline.takes("wav", "start", "stop", "duration")
-    @sb.utils.data_pipeline.provides("sig")
-    def audio_pipeline(wav, start, stop, duration):
-        start = int(start)
-        stop = int(stop)
-        num_frames = stop - start
-        sig, fs = torchaudio.load(
-            wav, num_frames=num_frames, frame_offset=start
+def load_dataset(hparams):
+    dataset_splits = {}
+    data_folder = hparams["data_save_folder"]
+    for split_id in DATASET_SPLITS:
+        split_path = hparams[f"{split_id}_json"]
+        dataset_split = sb.dataio.dataset.DynamicItemDataset.from_json(
+            split_path, replacements={"data_root": data_folder}
         )
-        sig = sig.transpose(0, 1).squeeze(1)
-        return sig
+        dataset_split = apply_sort(hparams, dataset_split)
+        dataset_splits[split_id] = dataset_split
+    return dataset_splits
 
-    sb.dataio.dataset.add_dynamic_item(datasets, audio_pipeline)
 
-    # 3. Define text pipeline:
-    @sb.utils.data_pipeline.takes("command")
-    @sb.utils.data_pipeline.provides("command", "command_encoded")
-    def label_pipeline(command):
-        yield command
-        command_encoded = label_encoder.encode_sequence_torch([command])
-        yield command_encoded
+def dataio_prep(hparams):
+    # Define audio pipeline
+    @sb.utils.data_pipeline.takes("file_name")
+    @sb.utils.data_pipeline.provides("sig")
+    def audio_pipeline(wav):
+        """Load the signal, and output it"""
+        return sb.dataio.dataio.read_audio(wav)
 
-    sb.dataio.dataset.add_dynamic_item(datasets, label_pipeline)
+    @sb.utils.data_pipeline.takes("digit", "speaker_id")
+    @sb.utils.data_pipeline.provides("digit_label", "speaker_label")
+    def labels_pipeline(digit, speaker_id):
+        yield int(digit)
+        yield int(speaker_id) - 1
 
-    # 3. Fit encoder:
-    # Load or compute the label encoder (with multi-GPU DDP support)
-    lab_enc_file = os.path.join(hparams["save_folder"], "label_encoder.txt")
-    label_encoder.load_or_create(
-        path=lab_enc_file,
-        from_didatasets=[train_data],
-        output_key="command",
-    )
+    # Define datasets. We also connect the dataset with the data processing
+    # functions defined above.
 
-    # 4. Set output:
+    dataset_splits = load_dataset(hparams)
+    dataset_splits_values = dataset_splits.values()
+
+    output_keys = ["file_name", "sig", "digit_label", "speaker_label"]
+    if "done_detector" in hparams:
+        output_keys += ["file_name_random", "sig_random"]
+
     sb.dataio.dataset.set_output_keys(
-        datasets, ["id", "sig", "command_encoded"]
+        dataset_splits_values,
+        output_keys,
     )
+    sb.dataio.dataset.add_dynamic_item(dataset_splits_values, audio_pipeline)
+    sb.dataio.dataset.add_dynamic_item(dataset_splits_values, labels_pipeline)
 
-    return train_data, valid_data, test_data, label_encoder
+    train_split = dataset_splits["train"]
+
+    if hparams["train_data_count"] is not None:
+        data_count = hparams["train_data_count"]
+        train_split.data_ids = train_split.data_ids[:data_count]
+    dataset_splits["train"] = train_split
+
+    return dataset_splits
 
 
 if __name__ == "__main__":
@@ -207,18 +203,21 @@ if __name__ == "__main__":
         kwargs={
             "data_folder": hparams["data_folder"],
             "save_folder": hparams["save_folder"],
-            "tgt_sample_rate": hparams["tgt_sample_rate"],
-            "trim": hparams["trim"],
-            "trim_threshold": hparams["trim_threshold"],
-            "norm": hparams["norm"],
-            "highpass": hparams["highpass"],
-            "process_audio": hparams["process_audio"],
+            "train_json": hparams["train_json"],
+            "valid_json": hparams["valid_json"],
+            "test_json": hparams["test_json"],
+            "metadata_folder": hparams["metadata_folder"],
+            "norm": hparams["data_prepare_norm"],
+            "trim": hparams["data_prepare_trim"],
+            "trim_threshold": hparams["data_prepare_trim_threshold"],
+            "src_sample_rate": hparams["data_prepare_sample_rate_src"],
+            "tgt_sample_rate": hparams["data_prepare_sample_rate_tgt"],
             "skip_prep": hparams["skip_prep"],
         },
     )
 
     # Dataset IO prep: creating Dataset objects and proper encodings for phones
-    train_data, valid_data, test_data, label_encoder = dataio_prep(hparams)
+    audio_datasets = dataio_prep(hparams)
 
     # Brain class initialization
     audio_brain = AudioBrain(
@@ -233,15 +232,15 @@ if __name__ == "__main__":
     # Training
     audio_brain.fit(
         audio_brain.hparams.epoch_counter,
-        train_data,
-        valid_data,
+        train_set=audio_datasets["train"],
+        valid_set=audio_datasets["valid"],
         train_loader_kwargs=hparams["dataloader_options"],
         valid_loader_kwargs=hparams["dataloader_options"],
     )
 
     # Load the best checkpoint for evaluation
     test_stats = audio_brain.evaluate(
-        test_set=test_data,
+        test_set=audio_datasets["test"],
         min_key="ErrorRate",
         test_loader_kwargs=hparams["dataloader_options"],
     )

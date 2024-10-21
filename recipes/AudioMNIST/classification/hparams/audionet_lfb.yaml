@@ -8,10 +8,15 @@ seed: 1879
 __set_seed: !apply:torch.manual_seed [!ref <seed>]
 
 number_of_digits: 10
+metadata_folder: null
 output_folder: !ref results/audionet_lfb/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
-
+data_save_folder: !ref <data_folder>/audiomnist_prepared
+sample_folder: !ref <output_folder>/samples
+train_json: !ref <save_folder>/train.json
+valid_json: !ref <save_folder>/valid.json
+test_json: !ref <save_folder>/test.json
 
 # Data files
 data_folder: !PLACEHOLDER  # e.g. /path/to/audiomnist
@@ -23,12 +28,20 @@ test_annotation: !ref <save_folder>/test.csv
 skip_prep: False
 ckpt_interval_minutes: 15 # save checkpoint every N min
 
+# Preparation Parameters
+data_prepare_norm: True
+data_prepare_trim: False
+data_prepare_trim_threshold: -30.
+data_prepare_sample_rate_src: 48000
+data_prepare_sample_rate_tgt: 8000
+
+
 ####################### Training Parameters ####################################
 number_of_epochs: 50
 batch_size: 128
 lr: 0.001
 
-tgt_sample_rate: 8000
+
 shuffle: True
 
 
@@ -52,7 +65,7 @@ compute_features: !new:speechbrain.lobes.features.LFB
     window_stride: 2.5
     window_len: 10.
     n_fft: 400
-    sample_rate: !ref <tgt_sample_rate>
+    sample_rate: !ref <data_prepare_sample_rate_tgt>
     gammatone_init_order: 4
     skip_transpose: True
     activation: !new:torch.nn.ReLU

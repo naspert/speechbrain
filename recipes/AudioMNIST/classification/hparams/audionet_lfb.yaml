@@ -9,7 +9,7 @@ __set_seed: !apply:torch.manual_seed [!ref <seed>]
 
 number_of_digits: 10
 metadata_folder: null
-output_folder: !ref results/audionet_lfb/<seed>
+output_folder: !ref <data_folder>results/audionet_lfb/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 data_save_folder: !ref <data_folder>/audiomnist_prepared
@@ -20,10 +20,6 @@ test_json: !ref <save_folder>/test.json
 
 # Data files
 data_folder: !PLACEHOLDER  # e.g. /path/to/audiomnist
-train_annotation: !ref <save_folder>/train.csv
-valid_annotation: !ref <save_folder>/valid.csv
-test_annotation: !ref <save_folder>/test.csv
-
 
 skip_prep: False
 ckpt_interval_minutes: 15 # save checkpoint every N min
@@ -40,8 +36,6 @@ data_prepare_sample_rate_tgt: 8000
 number_of_epochs: 50
 batch_size: 128
 lr: 0.001
-
-
 shuffle: True
 
 

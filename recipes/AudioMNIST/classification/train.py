@@ -111,14 +111,6 @@ class AudioBrain(sb.core.Brain):
 DATASET_SPLITS = ["train", "valid", "test"]
 
 
-def apply_sort(hparams, dataset):
-    if hparams["sort"]:
-        dataset = dataset.filtered_sorted(sort_key=hparams["sort"])
-    if hparams["batch_shuffle"]:
-        dataset = dataset.batch_shuffle(hparams["batch_size"])
-    return dataset
-
-
 def load_dataset(hparams):
     dataset_splits = {}
     data_folder = hparams["data_save_folder"]
@@ -127,7 +119,6 @@ def load_dataset(hparams):
         dataset_split = sb.dataio.dataset.DynamicItemDataset.from_json(
             split_path, replacements={"data_root": data_folder}
         )
-        dataset_split = apply_sort(hparams, dataset_split)
         dataset_splits[split_id] = dataset_split
     return dataset_splits
 

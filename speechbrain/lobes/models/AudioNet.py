@@ -7,7 +7,7 @@ Authors
 # import os
 import torch  # noqa: F401
 import torch.nn as nn
-from torch.nn import Dropout
+from torch.nn import Dropout, Flatten
 
 import speechbrain as sb
 from speechbrain.nnet.CNN import Conv1d
@@ -143,6 +143,8 @@ class Classifier(sb.nnet.containers.Sequential):
 
         if lin_blocks > 0:
             self.append(sb.nnet.containers.Sequential, layer_name="DNN")
+
+        self.append(Flatten(), layer_name="flatten")
 
         for block_index in range(lin_blocks):
             block_name = f"block_{block_index}"

@@ -8,7 +8,7 @@ seed: 1879
 __set_seed: !apply:torch.manual_seed [!ref <seed>]
 
 number_of_digits: 10
-output_folder: !ref results/xvect_lfb_v<number_of_commands>/<seed>
+output_folder: !ref results/audionet_lfb/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 
@@ -59,11 +59,11 @@ compute_features: !new:speechbrain.lobes.features.LFB
 
 embedding_model: !new:speechbrain.lobes.models.AudioNet.AudioNet
     in_channels: !ref <n_features>
-    activation: !name:torch.nn.ReLU,
-    conv_blocks: 3,
-    conv_channels: [64, 128, 128],
-    conv_kernel_sizes: [3, 3, 3],
-    conv_dilations: [1, 1, 1],
+    activation: !name:torch.nn.ReLU
+    conv_blocks: 3
+    conv_channels: [64, 128, 128]
+    conv_kernel_sizes: [3, 3, 3]
+    conv_dilations: [1, 1, 1]
 
 classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
     input_shape: [null, null, 128]
@@ -75,10 +75,15 @@ classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
 epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
     limit: !ref <number_of_epochs>
 
+mean_var_norm: !new:speechbrain.processing.features.InputNormalization
+    norm_type: sentence
+    std_norm: True
+
 modules:
     compute_features: !ref <compute_features>
     embedding_model: !ref <embedding_model>
     classifier: !ref <classifier>
+    mean_var_norm: !ref <mean_var_norm>
 
 
 # Cost + optimization

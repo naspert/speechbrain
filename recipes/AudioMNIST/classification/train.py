@@ -59,18 +59,13 @@ class AudioBrain(sb.core.Brain):
     def compute_objectives(self, predictions, batch, stage):
         """Computes the loss using command-id as label."""
         predictions, lens = predictions
-        uttid = batch.id
-        command, _ = batch.command_encoded
+        digit_label, _ = batch.digit_label
 
         # compute the cost function
-        loss = self.hparams.compute_cost(predictions, command, lens)
-        # loss = sb.nnet.losses.nll_loss(predictions, command, lens)
-
-        if hasattr(self.hparams.lr_annealing, "on_batch_end"):
-            self.hparams.lr_annealing.on_batch_end(self.optimizer)
+        loss = self.hparams.compute_cost(predictions, digit_label, lens)
 
         if stage != sb.Stage.TRAIN:
-            self.error_metrics.append(uttid, predictions, command, lens)
+            self.error_metrics.append(predictions, digit_label, lens)
 
         return loss
 
@@ -91,7 +86,7 @@ class AudioBrain(sb.core.Brain):
         # Perform end-of-iteration things, like annealing, logging, etc.
         if stage == sb.Stage.VALID:
             self.hparams.train_logger.log_stats(
-                stats_meta={"epoch": epoch, "lr": old_lr},
+                stats_meta={"epoch": epoch, "lr": self.optimizer.param_groups[0]["lr"]},
                 train_stats=self.train_stats,
                 valid_stats=stage_stats,
             )

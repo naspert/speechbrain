@@ -1,0 +1,104 @@
+# ################################
+# Model: Classification with AudioNet and Gammatone LFB
+# Authors: Nicolas Aspert 2024
+# ################################
+
+# Basic parameters
+seed: 1879
+__set_seed: !apply:torch.manual_seed [!ref <seed>]
+
+number_of_digits: 10
+output_folder: !ref results/xvect_lfb_v<number_of_commands>/<seed>
+save_folder: !ref <output_folder>/save
+train_log: !ref <output_folder>/train_log.txt
+
+
+# Data files
+data_folder: !PLACEHOLDER  # e.g. /path/to/audiomnist
+train_annotation: !ref <save_folder>/train.csv
+valid_annotation: !ref <save_folder>/valid.csv
+test_annotation: !ref <save_folder>/test.csv
+
+
+skip_prep: False
+ckpt_interval_minutes: 15 # save checkpoint every N min
+
+####################### Training Parameters ####################################
+number_of_epochs: 50
+batch_size: 128
+lr: 0.001
+
+tgt_sample_rate: 8000
+shuffle: True
+
+
+# Feature parameters
+n_features: 32
+
+# Number of classes (i.e. different commands)
+out_n_neurons: !ref <number_of_digits>
+
+num_workers: 4
+dataloader_options:
+    batch_size: !ref <batch_size>
+    shuffle: !ref <shuffle>
+    num_workers: !ref <num_workers>
+
+# Functions
+compute_features: !new:speechbrain.lobes.features.LFB
+    out_channels: !ref <n_features>
+    in_channels: 1
+    min_freq: 10.
+    window_stride: 2.5
+    window_len: 10.
+    n_fft: 400
+    sample_rate: !ref <tgt_sample_rate>
+    gammatone_init_order: 4
+    skip_transpose: True
+    activation: !new:torch.nn.ReLU
+
+embedding_model: !new:speechbrain.lobes.models.AudioNet.AudioNet
+    in_channels: !ref <n_features>
+    activation: !name:torch.nn.ReLU,
+    conv_blocks: 3,
+    conv_channels: [64, 128, 128],
+    conv_kernel_sizes: [3, 3, 3],
+    conv_dilations: [1, 1, 1],
+
+classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
+    input_shape: [null, null, 128]
+    activation: !name:torch.nn.LeakyReLU
+    lin_blocks: 2
+    lin_neurons: [512, 256]
+    out_neurons: !ref <out_n_neurons>
+
+epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter
+    limit: !ref <number_of_epochs>
+
+modules:
+    compute_features: !ref <compute_features>
+    embedding_model: !ref <embedding_model>
+    classifier: !ref <classifier>
+
+
+# Cost + optimization
+compute_cost: !name:speechbrain.nnet.losses.nll_loss
+
+opt_class: !name:torch.optim.Adam
+    lr: !ref <lr>
+
+# Logging + checkpoints
+train_logger: !new:speechbrain.utils.train_logger.FileTrainLogger
+    save_file: !ref <train_log>
+
+error_stats: !name:speechbrain.utils.metric_stats.MetricStats
+    metric: !name:speechbrain.nnet.losses.classification_error
+        reduction: batch
+
+checkpointer: !new:speechbrain.utils.checkpoints.Checkpointer
+    checkpoints_dir: !ref <save_folder>
+    recoverables:
+        embedding_model: !ref <embedding_model>
+        classifier: !ref <classifier>
+        normalizer: !ref <mean_var_norm>
+        counter: !ref <epoch_counter>

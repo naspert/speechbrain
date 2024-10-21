@@ -23,7 +23,7 @@ import speechbrain.nnet.CNN
 from speechbrain.utils.distributed import run_on_main
 
 
-class LFB(sb.core.Brain):
+class AudioBrain(sb.core.Brain):
     """Class for AudioMNIST training" """
 
     def compute_forward(self, batch, stage):
@@ -207,11 +207,12 @@ if __name__ == "__main__":
         kwargs={
             "data_folder": hparams["data_folder"],
             "save_folder": hparams["save_folder"],
-            "validation_percentage": hparams["validation_percentage"],
-            "testing_percentage": hparams["testing_percentage"],
-            "percentage_unknown": hparams["percentage_unknown"],
-            "percentage_silence": hparams["percentage_silence"],
-            "words_wanted": words_wanted,
+            "tgt_sample_rate": hparams["tgt_sample_rate"],
+            "trim": hparams["trim"],
+            "trim_threshold": hparams["trim_threshold"],
+            "norm": hparams["norm"],
+            "highpass": hparams["highpass"],
+            "process_audio": hparams["process_audio"],
             "skip_prep": hparams["skip_prep"],
         },
     )
@@ -220,7 +221,7 @@ if __name__ == "__main__":
     train_data, valid_data, test_data, label_encoder = dataio_prep(hparams)
 
     # Brain class initialization
-    speaker_brain = SpeakerBrain(
+    audio_brain = AudioBrain(
         modules=hparams["modules"],
         opt_class=hparams["opt_class"],
         hparams=hparams,
@@ -230,8 +231,8 @@ if __name__ == "__main__":
 
     # with torch.autograd.detect_anomaly():
     # Training
-    speaker_brain.fit(
-        speaker_brain.hparams.epoch_counter,
+    audio_brain.fit(
+        audio_brain.hparams.epoch_counter,
         train_data,
         valid_data,
         train_loader_kwargs=hparams["dataloader_options"],
@@ -239,7 +240,7 @@ if __name__ == "__main__":
     )
 
     # Load the best checkpoint for evaluation
-    test_stats = speaker_brain.evaluate(
+    test_stats = audio_brain.evaluate(
         test_set=test_data,
         min_key="ErrorRate",
         test_loader_kwargs=hparams["dataloader_options"],

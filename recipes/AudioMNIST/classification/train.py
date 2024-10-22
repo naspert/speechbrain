@@ -15,16 +15,33 @@ import os
 import sys
 
 import torch
+from torch import nn
 import torchaudio
 from hyperpyyaml import load_hyperpyyaml
 
 import speechbrain as sb
 import speechbrain.nnet.CNN
 from speechbrain.utils.distributed import run_on_main
+from torchinfo import summary
 
+class AudioModel(nn.Module):
+    def __init__(self, ab):
+        super(AudioModel, self).__init__()
+        self.compute_features = ab.modules.compute_features
+        self.embeddings = ab.modules.embedding_model
+        self.classifier = ab.modules.classifier
+
+    def forward(self, x):
+        f = self.compute_features(x)
+        e = self.embeddings(f)
+        x = self.classifier(e)
+        return x
 
 class AudioBrain(sb.core.Brain):
     """Class for AudioMNIST training" """
+
+    def forward(self, batch):
+        return self.compute_forward(batch, sb.Stage.TRAIN)
 
     def compute_forward(self, batch, stage):
         """Computation pipeline based on a encoder + command classifier.
@@ -59,7 +76,7 @@ class AudioBrain(sb.core.Brain):
     def compute_objectives(self, predictions, batch, stage):
         """Computes the loss using command-id as label."""
         predictions, lens = predictions
-        digit_label, _ = batch.digit_label
+        digit_label = batch.digit_label
 
         # compute the cost function
         loss = self.hparams.compute_cost(predictions, digit_label, lens)
@@ -209,7 +226,10 @@ if __name__ == "__main__":
         run_opts=run_opts,
         checkpointer=hparams["checkpointer"],
     )
-
+    summary(
+        AudioModel(audio_brain),
+        (1, 8000)
+    )
     # with torch.autograd.detect_anomaly():
     # Training
     audio_brain.fit(

@@ -79,7 +79,7 @@ class AudioBrain(sb.core.Brain):
         digit_label = batch.digit_label
 
         # compute the cost function
-        loss = self.hparams.compute_cost(predictions, digit_label, lens)
+        loss = self.hparams.compute_cost(predictions.unsqueeze(1), digit_label.unsqueeze(1), lens)
 
         if stage != sb.Stage.TRAIN:
             self.error_metrics.append(predictions, digit_label, lens)
@@ -211,6 +211,7 @@ if __name__ == "__main__":
             "trim_threshold": hparams["data_prepare_trim_threshold"],
             "src_sample_rate": hparams["data_prepare_sample_rate_src"],
             "tgt_sample_rate": hparams["data_prepare_sample_rate_tgt"],
+            "pad_output": hparams["data_prepare_pad_output"],
             "skip_prep": hparams["skip_prep"],
         },
     )

@@ -22,6 +22,7 @@ from subprocess import list2cmdline
 
 import torchaudio
 from torchaudio import functional as F
+import torch.nn.functional as Ft
 from tqdm.auto import tqdm
 
 import speechbrain as sb
@@ -61,6 +62,7 @@ def prepare_audiomnist(
     norm=True,
     highpass=True,
     process_audio=None,
+    pad_output=None,
     skip_prep=False,
 ):
     """Auto-downloads and prepares the AudioMNIST dataset
@@ -174,6 +176,7 @@ def prepare_audiomnist(
             trim_threshold=trim_threshold,
             norm=norm,
             highpass=highpass,
+            pad_output=pad_output,
         )
 
     # Get file lists for train/valid/test splits
@@ -739,6 +742,7 @@ def process_audio_default(
     src_sample_rate=48000,
     tgt_sample_rate=22050,
     trim_threshold=-30.0,
+    pad_output=None,
 ):
     """Standard audio preprocessing / conversion
 
@@ -778,6 +782,9 @@ def process_audio_default(
             sig.unsqueeze(0), tgt_sample_rate, effects, channels_first=True
         )
         sig = sig.squeeze(0)
+
+    if pad_output is not None:
+        sig = Ft.pad(sig, (pad_output - len(sig), "constant", 0))
 
     # Normalize
     if norm:

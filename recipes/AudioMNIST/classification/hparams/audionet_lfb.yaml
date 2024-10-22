@@ -30,6 +30,8 @@ data_prepare_trim: False
 data_prepare_trim_threshold: -30.
 data_prepare_sample_rate_src: 48000
 data_prepare_sample_rate_tgt: 8000
+# make all samples 1s long
+data_prepare_pad_output: !ref <data_prepare_sample_rate_tgt>
 
 
 ####################### Training Parameters ####################################

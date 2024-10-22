@@ -784,7 +784,7 @@ def process_audio_default(
         sig = sig.squeeze(0)
 
     if pad_output is not None:
-        sig = Ft.pad(sig, (pad_output - len(sig), "constant", 0))
+        sig = Ft.pad(sig, (0, pad_output - len(sig)), "constant", 0)
 
     # Normalize
     if norm:

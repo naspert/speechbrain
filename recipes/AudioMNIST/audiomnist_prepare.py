@@ -16,6 +16,7 @@ import csv
 import json
 import math
 import os
+import random
 from functools import partial
 from glob import glob
 from subprocess import list2cmdline
@@ -227,7 +228,7 @@ def skip(json_files, save_opt, conf):
     """
 
     # Checking csv files
-    skip = any(not os.path.isfile(json_file) for json_file in json_files)
+    skip = all(os.path.isfile(json_file) for json_file in json_files)
 
     #  Checking saved options
     if skip is True:
@@ -784,7 +785,9 @@ def process_audio_default(
         sig = sig.squeeze(0)
 
     if pad_output is not None:
-        sig = Ft.pad(sig, (0, pad_output - len(sig)), "constant", 0)
+        delta = pad_output - len(sig)
+        offset = random.randint(0, delta) # if padding, insert blank space of random length at start of signal
+        sig = Ft.pad(sig, (offset, delta - offset), "constant", 0)
 
     # Normalize
     if norm:

@@ -9,14 +9,14 @@ __set_seed: !apply:torch.manual_seed [!ref <seed>]
 
 number_of_digits: 10
 metadata_folder: null
-output_folder: !ref <data_folder>/results/audionet_lfb/<seed>
+output_folder: !ref ./results/audionet_lfb/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 data_save_folder: !ref <data_folder>/audiomnist_prepared
 sample_folder: !ref <output_folder>/samples
-train_json: !ref <save_folder>/train.json
-valid_json: !ref <save_folder>/valid.json
-test_json: !ref <save_folder>/test.json
+train_json: !ref <data_save_folder>/train.json
+valid_json: !ref <data_save_folder>/valid.json
+test_json: !ref <data_save_folder>/test.json
 
 # Data files
 data_folder: !PLACEHOLDER  # e.g. /path/to/audiomnist

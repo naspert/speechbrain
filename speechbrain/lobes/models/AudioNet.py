@@ -16,7 +16,7 @@ from speechbrain.nnet.normalization import BatchNorm1d
 from speechbrain.nnet.pooling import Pooling1d
 
 
-class AudioNet(torch.nn.Module):
+class AudioNet(nn.Module):
     """This model extracts features for spoken digits recognition.
 
     Arguments
@@ -167,3 +167,22 @@ class Classifier(sb.nnet.containers.Sequential):
         self.append(
             sb.nnet.activations.Softmax(apply_log=True), layer_name="softmax"
         )
+
+class AudioNetFeatures(nn.Module):
+    def __init__(self, in_channels, conv_kernel_size, conv_dilation, out_channels, activation=nn.ReLU):
+        super().__init__()
+        self.conv = Conv1d(
+                        in_channels=in_channels,
+                        out_channels=out_channels,
+                        kernel_size=conv_kernel_size,
+                        dilation=conv_dilation,
+                    )
+        self.activ = activation()
+        self.pool = Pooling1d(kernel_size=3, pool_type="max", stride=2)
+
+
+    def forward(self, x):
+        x = self.conv(x)
+        x = self.activ(x)
+        x = self.pool(x)
+        return x

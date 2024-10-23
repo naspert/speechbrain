@@ -62,7 +62,7 @@ class AudioNet(torch.nn.Module):
     ):
         super().__init__()
         self.blocks = nn.ModuleList()
-
+        self.flatten = Flatten()
         # Conv layers
         for block_index in range(conv_blocks):
             out_channels = conv_channels[block_index]
@@ -101,7 +101,7 @@ class AudioNet(torch.nn.Module):
                 x = layer(x, lengths=lens)
             except TypeError:
                 x = layer(x)
-        return x
+        return self.flatten(x)
 
 
 class Classifier(sb.nnet.containers.Sequential):
@@ -144,7 +144,6 @@ class Classifier(sb.nnet.containers.Sequential):
         if lin_blocks > 0:
             self.append(sb.nnet.containers.Sequential, layer_name="DNN")
 
-        self.append(Flatten(), layer_name="flatten")
 
         for block_index in range(lin_blocks):
             block_name = f"block_{block_index}"
@@ -157,8 +156,9 @@ class Classifier(sb.nnet.containers.Sequential):
                 bias=True,
                 layer_name="linear",
             )
-            self.DNN[block_name].append(activation(), layer_name="act")
             self.DNN[block_name].append(Dropout(p=0.5), layer_name="dropout")
+            self.DNN[block_name].append(activation(), layer_name="act")
+
 
         # Final Softmax classifier
         self.append(

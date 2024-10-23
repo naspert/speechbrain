@@ -228,7 +228,7 @@ def skip(json_files, save_opt, conf):
     """
 
     # Checking csv files
-    skip = all(os.path.isfile(json_file) for json_file in json_files)
+    skip = all(os.path.isfile(json_file) for json_file in json_files.values())
 
     #  Checking saved options
     if skip is True:

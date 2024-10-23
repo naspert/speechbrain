@@ -75,14 +75,17 @@ class AudioBrain(sb.core.Brain):
 
     def compute_objectives(self, predictions, batch, stage):
         """Computes the loss using command-id as label."""
+        uttid = batch.file_name
         predictions, lens = predictions
         digit_label = batch.digit_label
 
+        predictions = predictions.unsqueeze(1)
+        digit_label = digit_label.unsqueeze(1)
         # compute the cost function
-        loss = self.hparams.compute_cost(predictions.unsqueeze(1), digit_label.unsqueeze(1), lens)
+        loss = self.hparams.compute_cost(predictions, digit_label, lens)
 
         if stage != sb.Stage.TRAIN:
-            self.error_metrics.append(predictions, digit_label, lens)
+            self.error_metrics.append(uttid, predictions, digit_label, lens)
 
         return loss
 

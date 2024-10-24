@@ -178,7 +178,7 @@ class AudioNetFeatures(nn.Module):
                         dilation=conv_dilation,
                     )
         self.activ = activation()
-        self.pool = Pooling1d(kernel_size=3, pool_type="max", stride=2)
+        self.pool = Pooling1d(kernel_size=3, pool_type="max", stride=2, padding=1)
 
 
     def forward(self, x):

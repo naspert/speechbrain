@@ -182,6 +182,7 @@ class AudioNetFeatures(nn.Module):
 
 
     def forward(self, x):
+        x = x.unsqueeze(1).transpose(1, -1)
         x = self.conv(x)
         x = self.activ(x)
         x = self.pool(x)

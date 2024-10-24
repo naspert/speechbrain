@@ -51,25 +51,11 @@ class AudioBrain(sb.core.Brain):
         batch = batch.to(self.device)
         wavs, lens = batch.sig
 
-        if isinstance(
-            self.modules.compute_features, speechbrain.lobes.features.Leaf
-        ):
-            # if leaf, first normalize the wavs before feeding them to leaf
-            # no normalization is needed after LEAF
-            feats = self.modules.mean_var_norm(wavs, lens)
-            feats = self.modules.compute_features(feats)
-        else:
-            # Feature extraction and normalization
-            feats = self.modules.compute_features(wavs)
-            feats = self.modules.mean_var_norm(feats, lens)
+        feats = self.modules.compute_features(wavs)
 
         # Embeddings + classifier
         embeddings = self.modules.embedding_model(feats)
         outputs = self.modules.classifier(embeddings)
-
-        # Ecapa model uses softmax outside of its classifier
-        if "softmax" in self.modules.keys():
-            outputs = self.modules.softmax(outputs)
 
         return outputs, lens
 

@@ -27,6 +27,9 @@ rir_annotation: !ref <data_save_folder>/rir.csv
 
 # Data files
 data_folder: !PLACEHOLDER  # e.g. /path/to/audiomnist
+data_folder_noise: !ref <data_folder>/noise # The noisy sequences for data augmentation will automatically be downloaded here.
+data_folder_rir: !ref <data_folder>/rir # The impulse responses used for data augmentation will automatically be downloaded here.
+
 
 skip_prep: False
 ckpt_interval_minutes: 15 # save checkpoint every N min

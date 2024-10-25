@@ -12,7 +12,7 @@ number_of_digits: 10
 # use "split[0-4].zip" for the official audiomnist splits, null for default data url in audiomnist_prepare.py
 metadata_repo: https://os.unil.cloud.switch.ch/swift/v1/lts2-speechbrain/AudioMNIST/metadata_split0.zip
 metadata_folder: null
-output_folder: !ref ./results/audionet_lfb/<seed>
+output_folder: !ref ./results/audionet_custom_lfb/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 data_save_folder: !ref <data_folder>/audiomnist_prepared
@@ -77,8 +77,8 @@ embedding_model: !new:speechbrain.lobes.models.AudioNet.AudioNet
     conv_channels: [32, 64, 128, 256]
     conv_kernel_sizes: [32, 16, 8, 4]
     conv_dilations: [1, 1, 1, 1]
-    max_pool_size: [4, 0, 0, 4]
-    max_pool_stride: [4, 0, 0, 4]
+    max_pooling_size: [4, 0, 0, 4]
+    max_pooling_stride: [4, 0, 0, 4]
 
 classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
     input_shape: [null, 128]

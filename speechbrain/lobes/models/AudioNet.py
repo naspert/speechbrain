@@ -46,6 +46,22 @@ class AudioNet(nn.Module):
     >>> outputs.shape
     torch.Size([5, 1, 512])
     """
+    def _get_conv_block(self, in_channels, out_channels, kernel_size, dilation, activation, pool_size, pool_stride):
+        res = []
+        res.append(
+            Conv1d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                dilation=dilation,
+            )
+        )
+        if activation is not None:
+            res.append(activation())
+        if pool_size > 0:
+            res.append(Pooling1d(kernel_size=pool_size, pool_type="max", stride=pool_stride))
+
+        return res
 
     def __init__(
         self,
@@ -58,6 +74,8 @@ class AudioNet(nn.Module):
             1,
             1,
         ],
+        max_pooling_kernel=[2, 2, 2],
+        max_pooling_stride=[2, 2, 2],
         in_channels=40,
     ):
         super().__init__()
@@ -66,18 +84,9 @@ class AudioNet(nn.Module):
         # Conv layers
         for block_index in range(conv_blocks):
             out_channels = conv_channels[block_index]
-            self.blocks.extend(
-                [
-                    Conv1d(
-                        in_channels=in_channels,
-                        out_channels=out_channels,
-                        kernel_size=conv_kernel_sizes[block_index],
-                        dilation=conv_dilations[block_index],
-                    ),
-                    activation(),
-                    Pooling1d(kernel_size=2, pool_type="max", stride=2),
-                ]
-            )
+            self.blocks.extend(self._get_conv_block(in_channels, out_channels,
+                                                    conv_kernel_sizes[block_index], conv_dilations[block_index],
+                                                    activation, max_pooling_kernel[block_index], max_pooling_stride[block_index]))
             in_channels = conv_channels[block_index]
 
     def forward(self, x, lens=None):
@@ -157,7 +166,8 @@ class Classifier(sb.nnet.containers.Sequential):
                 layer_name="linear",
             )
             self.DNN[block_name].append(Dropout(p=0.5), layer_name="dropout")
-            self.DNN[block_name].append(activation(), layer_name="act")
+            if activation is not None:
+                self.DNN[block_name].append(activation(), layer_name="act")
 
 
         # Final Softmax classifier

@@ -194,6 +194,7 @@ if __name__ == "__main__":
             "train_json": hparams["train_json"],
             "valid_json": hparams["valid_json"],
             "test_json": hparams["test_json"],
+            "metadata_repo": hparams["metadata_repo"],
             "metadata_folder": hparams["metadata_folder"],
             "norm": hparams["data_prepare_norm"],
             "trim": hparams["data_prepare_trim"],

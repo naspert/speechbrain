@@ -70,7 +70,7 @@ embedding_model: !new:speechbrain.lobes.models.AudioNet.AudioNet
     conv_dilations: [1, 1, 1, 1, 1]
 
 classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
-    input_shape: [null, null, 128]
+    input_shape: [null, 16000]
     activation: !name:torch.nn.LeakyReLU
     lin_blocks: 2
     lin_neurons: [1024, 512]

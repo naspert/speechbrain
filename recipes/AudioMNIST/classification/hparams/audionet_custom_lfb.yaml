@@ -9,8 +9,6 @@ __set_seed: !apply:torch.manual_seed [!ref <seed>]
 
 
 number_of_digits: 10
-# use "split[0-4].zip" for the official audiomnist splits, null for default data url in audiomnist_prepare.py
-metadata_repo: https://os.unil.cloud.switch.ch/swift/v1/lts2-speechbrain/AudioMNIST/metadata_spit0.zip
 metadata_folder: null
 output_folder: !ref ./results/audionet_lfb/<seed>
 save_folder: !ref <output_folder>/save
@@ -73,18 +71,18 @@ compute_features: !new:speechbrain.lobes.features.LFB
 embedding_model: !new:speechbrain.lobes.models.AudioNet.AudioNet
     in_channels: !ref <n_features>
     activation: !name:torch.nn.ReLU
-    conv_blocks: 3
-    conv_channels: [64, 128, 128]
-    conv_kernel_sizes: [3, 3, 3]
-    conv_dilations: [1, 1, 1]
-    max_pooling_kernel: [2, 2, 2]
-    max_pooling_stride: [2, 2, 2]
+    conv_blocks: 4
+    conv_channels: [32, 64, 128, 256]
+    conv_kernel_sizes: [32, 16, 8, 4]
+    conv_dilations: [1, 1, 1, 1]
+    max_pool_size: [4, 0, 0, 4]
+    max_pool_stride: [4, 0, 0, 4]
 
 classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
-    input_shape: [null, 6400]
+    input_shape: [null, 128]
     activation: null
     lin_blocks: 2
-    lin_neurons: [512, 256]
+    lin_neurons: [256, 128]
     out_neurons: !ref <out_n_neurons>
 
 epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter

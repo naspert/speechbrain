@@ -21,9 +21,9 @@ from functools import partial
 from glob import glob
 from subprocess import list2cmdline
 
+import torch.nn.functional as Ft
 import torchaudio
 from torchaudio import functional as F
-import torch.nn.functional as Ft
 from tqdm.auto import tqdm
 
 import speechbrain as sb
@@ -109,6 +109,8 @@ def prepare_audiomnist(
     process_audio: callable
         a custom function used to process audio files - instead of
         the standard transform (resample + normalize + trim)
+    pad_output: int
+        the length in samples of the output signal. If None, no padding is applied.
     skip_prep: bool
         whether preparation should be skipped
 
@@ -763,6 +765,8 @@ def process_audio_default(
         the target sample rate
     trim_threshold: float
         the decibels threshold for trimming the file
+    pad_output: int
+        the length of the output signal (if padding is needed). If None, no padding is applied.
 
     Returns
     -------
@@ -786,7 +790,9 @@ def process_audio_default(
 
     if pad_output is not None:
         delta = pad_output - len(sig)
-        offset = random.randint(0, delta) # if padding, insert blank space of random length at start of signal
+        offset = random.randint(
+            0, delta
+        )  # if padding, insert blank space of random length at start of signal
         sig = Ft.pad(sig, (offset, delta - offset), "constant", 0)
 
     # Normalize

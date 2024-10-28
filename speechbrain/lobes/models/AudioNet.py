@@ -1,5 +1,7 @@
-"""A simple audio classification architecture for AudioMNIST https://arxiv.org/abs/1807.03418.
-
+"""
+A simple audio classification architecture for AudioMNIST https://arxiv.org/abs/1807.03418.
+Used with a learnable gammatone frontend in "Learnable filter-banks
+        for CNN-based audio applications", in Proc of NLDL 2022 (https://septentrio.uit.no/index.php/nldl/article/view/6279)
 Authors
  * Nicolas Aspert 2024
 """
@@ -10,9 +12,9 @@ import torch.nn as nn
 from torch.nn import Dropout, Flatten
 
 import speechbrain as sb
+from speechbrain.nnet.activations import Softmax
 from speechbrain.nnet.CNN import Conv1d
 from speechbrain.nnet.linear import Linear
-from speechbrain.nnet.normalization import BatchNorm1d
 from speechbrain.nnet.pooling import Pooling1d
 
 
@@ -21,47 +23,31 @@ class AudioNet(nn.Module):
 
     Arguments
     ---------
-    device : str
-        Device used e.g. "cpu" or "cuda".
     activation : torch class
         A class for constructing the activation layers.
-    tdnn_blocks : int
-        Number of time-delay neural (TDNN) layers.
-    tdnn_channels : list of ints
-        Output channels for TDNN layer.
-    tdnn_kernel_sizes : list of ints
-        List of kernel sizes for each TDNN layer.
-    tdnn_dilations : list of ints
-        List of dilations for kernels in each TDNN layer.
-    lin_neurons : int
-        Number of neurons in linear layers.
+    conv_blocks : int
+        Number of convolutional layers.
+    conv_channels : list of ints
+        Output channels for conv layer.
+    conv_kernel_sizes : list of ints
+        List of kernel sizes for each conv layer.
+    conv_dilations : list of ints
+        List of dilations for kernels in each conv layer.
+    max_pooling_kernel : list of ints
+        Kernel size for max pooling in each conv layer. If zero, no pooling is applied.
+    max_pooling_stride : list of ints
+        Stride for max pooling in each conv layer. Only applied if corresponding value in max_pooling_kernel is not zero.
     in_channels : int
         Expected size of input features.
 
     Example
     -------
-    >>> compute_xvect = Xvector('cpu')
+    >>> compute_audionet = AudioNet
     >>> input_feats = torch.rand([5, 10, 40])
-    >>> outputs = compute_xvect(input_feats)
+    >>> outputs = compute_audionet(input_feats)
     >>> outputs.shape
     torch.Size([5, 1, 512])
     """
-    def _get_conv_block(self, in_channels, out_channels, kernel_size, dilation, activation, pool_size, pool_stride):
-        res = []
-        res.append(
-            Conv1d(
-                in_channels=in_channels,
-                out_channels=out_channels,
-                kernel_size=kernel_size,
-                dilation=dilation,
-            )
-        )
-        if activation is not None:
-            res.append(activation())
-        if pool_size > 0:
-            res.append(Pooling1d(kernel_size=pool_size, pool_type="max", stride=pool_stride))
-
-        return res
 
     def __init__(
         self,
@@ -84,13 +70,75 @@ class AudioNet(nn.Module):
         # Conv layers
         for block_index in range(conv_blocks):
             out_channels = conv_channels[block_index]
-            self.blocks.extend(self._get_conv_block(in_channels, out_channels,
-                                                    conv_kernel_sizes[block_index], conv_dilations[block_index],
-                                                    activation, max_pooling_kernel[block_index], max_pooling_stride[block_index]))
+            self.blocks.extend(
+                self._get_conv_block(
+                    in_channels,
+                    out_channels,
+                    conv_kernel_sizes[block_index],
+                    conv_dilations[block_index],
+                    activation,
+                    max_pooling_kernel[block_index],
+                    max_pooling_stride[block_index],
+                )
+            )
             in_channels = conv_channels[block_index]
 
+    def _get_conv_block(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        dilation,
+        activation,
+        pool_size,
+        pool_stride,
+    ):
+        """
+        Builds the layers for a single convolutional block.
+
+        Arguments
+        ---------
+        in_channels : int
+            Expected size of input features.
+        out_channels : int
+            Number of output channels.
+        kernel_size : int
+            Kernel size for the convolutional layer.
+        dilation : int
+            Dilation for the convolutional layer.
+        activation : torch class
+            A class for constructing the activation layers. If None, no activation is applied.
+        pool_size : int
+            Kernel size for max pooling. If zero, no pooling is applied.
+        pool_stride : int
+            Stride for max pooling. Only applied if pool_size is not zero.
+
+        Returns
+        -------
+        res : list
+            List of layers in the block.
+        """
+        res = [
+            Conv1d(
+                in_channels=in_channels,
+                out_channels=out_channels,
+                kernel_size=kernel_size,
+                dilation=dilation,
+            )
+        ]
+        if activation is not None:
+            res.append(activation())
+        if pool_size > 0:
+            res.append(
+                Pooling1d(
+                    kernel_size=pool_size, pool_type="max", stride=pool_stride
+                )
+            )
+
+        return res
+
     def forward(self, x, lens=None):
-        """Returns the x-vectors.
+        """Computes the AudioNet features.
 
         Arguments
         ---------
@@ -102,7 +150,7 @@ class AudioNet(nn.Module):
         Returns
         -------
         x : torch.Tensor
-            X-vectors.
+            Features
         """
 
         for layer in self.blocks:
@@ -114,7 +162,9 @@ class AudioNet(nn.Module):
 
 
 class Classifier(sb.nnet.containers.Sequential):
-    """This class implements the last MLP on the top of xvector features.
+    """This class implements the classifier MLP on the top of AudioNet features.
+    A softmax layer is used to predict the class probabilities after the MLP.
+    Dropout of 50% is applied after each linear layer.
 
     Arguments
     ---------
@@ -124,18 +174,18 @@ class Classifier(sb.nnet.containers.Sequential):
         A class for constructing the activation layers.
     lin_blocks : int
         Number of linear layers.
-    lin_neurons : int
+    lin_neurons : list of ints
         Number of neurons in linear layers.
     out_neurons : int
-        Number of output neurons.
+        Number of output neurons in the final layer.
 
     Example
     -------
     >>> input_feats = torch.rand([5, 10, 40])
-    >>> compute_xvect = Xvector()
-    >>> xvects = compute_xvect(input_feats)
-    >>> classify = Classifier(input_shape=xvects.shape)
-    >>> output = classify(xvects)
+    >>> compute_audionet = AudioNet()
+    >>> audionet_feats = compute_audionet(input_feats)
+    >>> classify = Classifier(input_shape=audionet_feats.shape)
+    >>> output = classify(audionet_feats)
     >>> output.shape
     torch.Size([5, 1, 1211])
     """
@@ -153,14 +203,13 @@ class Classifier(sb.nnet.containers.Sequential):
         if lin_blocks > 0:
             self.append(sb.nnet.containers.Sequential, layer_name="DNN")
 
-
         for block_index in range(lin_blocks):
             block_name = f"block_{block_index}"
             self.DNN.append(
                 sb.nnet.containers.Sequential, layer_name=block_name
             )
             self.DNN[block_name].append(
-                sb.nnet.linear.Linear,
+                Linear,
                 n_neurons=lin_neurons[block_index],
                 bias=True,
                 layer_name="linear",
@@ -169,29 +218,64 @@ class Classifier(sb.nnet.containers.Sequential):
             if activation is not None:
                 self.DNN[block_name].append(activation(), layer_name="act")
 
-
         # Final Softmax classifier
-        self.append(
-            sb.nnet.linear.Linear, n_neurons=out_neurons, layer_name="out"
-        )
-        self.append(
-            sb.nnet.activations.Softmax(apply_log=True), layer_name="softmax"
-        )
+        self.append(Linear, n_neurons=out_neurons, layer_name="out")
+        self.append(Softmax(apply_log=True), layer_name="softmax")
 
-class AudioNetFeatures(nn.Module):
-    def __init__(self, in_channels, conv_kernel_size, conv_dilation, out_channels, activation=nn.ReLU):
+
+class AudioNetFrontend(nn.Module):
+    """
+    A simple frontend for AudioNet, using a single convolutional layer with max pooling.
+
+    Arguments
+    ----------
+
+    in_channels : int
+        Expected size of input features.
+    conv_kernel_size : int
+        Kernel size for the convolutional layer.
+    conv_dilation : int
+        Dilation for the convolutional layer.
+    out_channels : int
+        Number of output channels.
+    activation : torch class
+        A class for constructing the activation layers.
+    """
+
+    def __init__(
+        self,
+        in_channels,
+        conv_kernel_size,
+        conv_dilation,
+        out_channels,
+        activation=nn.ReLU,
+    ):
         super().__init__()
         self.conv = Conv1d(
-                        in_channels=in_channels,
-                        out_channels=out_channels,
-                        kernel_size=conv_kernel_size,
-                        dilation=conv_dilation,
-                    )
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=conv_kernel_size,
+            dilation=conv_dilation,
+        )
         self.activ = activation()
-        self.pool = Pooling1d(kernel_size=3, pool_type="max", stride=2, padding=1)
-
+        self.pool = Pooling1d(
+            kernel_size=3, pool_type="max", stride=2, padding=1
+        )
 
     def forward(self, x):
+        """
+        Computes the frontend features from raw audio data.
+
+        Arguments
+        ---------
+        x : torch.Tensor
+            Inputs audio data.
+
+        Returns
+        -------
+        x : torch.Tensor
+            Features
+        """
         x = x.unsqueeze(1).transpose(1, -1)
         x = self.conv(x)
         x = self.activ(x)

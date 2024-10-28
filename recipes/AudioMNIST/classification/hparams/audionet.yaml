@@ -56,7 +56,7 @@ dataloader_options:
     num_workers: !ref <num_workers>
 
 # Functions
-compute_features: !new:speechbrain.lobes.models.AudioNet.AudioNetFeatures
+compute_features: !new:speechbrain.lobes.models.AudioNet.AudioNetFrontend
     out_channels: !ref <audionet_features>
     in_channels: 1
     conv_kernel_size: 3

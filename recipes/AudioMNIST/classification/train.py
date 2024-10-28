@@ -11,33 +11,16 @@ Using your own hyperparameter file or one of the following:
 Author
     * Nicolas Aspert 2024
 """
-import os
 import sys
 
 import torch
-from torch import nn
-import torchaudio
 from hyperpyyaml import load_hyperpyyaml
 
 import speechbrain as sb
-import speechbrain.nnet.CNN
 from speechbrain.utils.distributed import run_on_main
-from torchinfo import summary
 
-class AudioModel(nn.Module):
-    def __init__(self, ab):
-        super(AudioModel, self).__init__()
-        self.compute_features = ab.modules.compute_features
-        self.embeddings = ab.modules.embedding_model
-        self.classifier = ab.modules.classifier
 
-    def forward(self, x):
-        f = self.compute_features(x)
-        e = self.embeddings(f)
-        x = self.classifier(e)
-        return x
-
-class AudioBrain(sb.core.Brain):
+class AudioNetBrain(sb.core.Brain):
     """Class for AudioMNIST training" """
 
     def forward(self, batch):
@@ -92,7 +75,10 @@ class AudioBrain(sb.core.Brain):
         # Perform end-of-iteration things, like annealing, logging, etc.
         if stage == sb.Stage.VALID:
             self.hparams.train_logger.log_stats(
-                stats_meta={"epoch": epoch, "lr": self.optimizer.param_groups[0]["lr"]},
+                stats_meta={
+                    "epoch": epoch,
+                    "lr": self.optimizer.param_groups[0]["lr"],
+                },
                 train_stats=self.train_stats,
                 valid_stats=stage_stats,
             )
@@ -210,18 +196,14 @@ if __name__ == "__main__":
     audio_datasets = dataio_prep(hparams)
 
     # Brain class initialization
-    audio_brain = AudioBrain(
+    audio_brain = AudioNetBrain(
         modules=hparams["modules"],
         opt_class=hparams["opt_class"],
         hparams=hparams,
         run_opts=run_opts,
         checkpointer=hparams["checkpointer"],
     )
-    summary(
-        AudioModel(audio_brain),
-        (1, 8000)
-    )
-    # with torch.autograd.detect_anomaly():
+
     # Training
     audio_brain.fit(
         audio_brain.hparams.epoch_counter,

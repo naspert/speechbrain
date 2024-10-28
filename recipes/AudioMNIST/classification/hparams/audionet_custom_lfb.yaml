@@ -75,16 +75,16 @@ embedding_model: !new:speechbrain.lobes.models.AudioNet.AudioNet
     activation: !name:torch.nn.ReLU
     conv_blocks: 4
     conv_channels: [32, 64, 128, 256]
-    conv_kernel_sizes: [32, 16, 8, 4]
+    conv_kernel_sizes: [33, 17, 9, 5]
     conv_dilations: [1, 1, 1, 1]
-    max_pooling_size: [4, 0, 0, 4]
+    max_pooling_kernel: [4, 0, 0, 4]
     max_pooling_stride: [4, 0, 0, 4]
 
 classifier: !new:speechbrain.lobes.models.AudioNet.Classifier
-    input_shape: [null, 128]
+    input_shape: [null, 6400]
     activation: null
     lin_blocks: 2
-    lin_neurons: [256, 128]
+    lin_neurons: [128, 64]
     out_neurons: !ref <out_n_neurons>
 
 epoch_counter: !new:speechbrain.utils.epoch_loop.EpochCounter

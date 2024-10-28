@@ -42,11 +42,11 @@ class AudioNet(nn.Module):
 
     Example
     -------
-    >>> compute_audionet = AudioNet
+    >>> compute_audionet = AudioNet()
     >>> input_feats = torch.rand([5, 10, 40])
     >>> outputs = compute_audionet(input_feats)
     >>> outputs.shape
-    torch.Size([5, 1, 512])
+    torch.Size([5, 128])
     """
 
     def __init__(
@@ -187,7 +187,7 @@ class Classifier(sb.nnet.containers.Sequential):
     >>> classify = Classifier(input_shape=audionet_feats.shape)
     >>> output = classify(audionet_feats)
     >>> output.shape
-    torch.Size([5, 1, 1211])
+    torch.Size([5, 10])
     """
 
     def __init__(

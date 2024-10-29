@@ -16,7 +16,6 @@ output_folder: !ref ./results/audionet_lfb/<seed>
 save_folder: !ref <output_folder>/save
 train_log: !ref <output_folder>/train_log.txt
 data_save_folder: !ref <data_folder>/audiomnist_prepared
-sample_folder: !ref <output_folder>/samples
 train_json: !ref <data_save_folder>/train.json
 valid_json: !ref <data_save_folder>/valid.json
 test_json: !ref <data_save_folder>/test.json
